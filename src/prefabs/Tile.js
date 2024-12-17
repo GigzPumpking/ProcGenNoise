@@ -4,9 +4,11 @@ const adjacencies = {
     0: [
         { tile: 1, direction: 'right' },
         { tile: 3, direction: 'down' },
+        { tile: 2, direction: 'right'},
         { tile: 9, direction: 'left' },
         { tile: 9, direction: 'up' },
-        { tile: 4, direction: 'down'}
+        { tile: 4, direction: 'down'},
+        { tile: 6, direction: 'down' }
     ],
     1: [
         { tile: 0, direction: 'left' },
@@ -14,14 +16,17 @@ const adjacencies = {
         { tile: 4, direction: 'down' },
         { tile: 9, direction: 'up' },
         { tile: 1, direction: 'right' },
-        { tile: 1, direction: 'left' }
+        { tile: 1, direction: 'left' },
+        { tile: 7, direction: 'down' }
     ],
     2: [
+        { tile: 0, direction: 'left' },
         { tile: 1, direction: 'left' },
         { tile: 5, direction: 'down' },
         { tile: 9, direction: 'right' },
         { tile: 9, direction: 'up' },
-        { tile: 4, direction: 'down'}
+        { tile: 4, direction: 'down'},
+        { tile: 8, direction: 'down' }
     ],
     3: [
         { tile: 0, direction: 'up' },
@@ -29,7 +34,8 @@ const adjacencies = {
         { tile: 6, direction: 'down' },
         { tile: 9, direction: 'left' },
         { tile: 3, direction: 'up' },
-        { tile: 3, direction: 'down'}
+        { tile: 3, direction: 'down'},
+        { tile: 5, direction: 'right'}
     ],
     4: [
         { tile: 1, direction: 'up' },
@@ -47,14 +53,17 @@ const adjacencies = {
         { tile: 8, direction: 'down' },
         { tile: 9, direction: 'right' },
         { tile: 5, direction: 'up' },
-        { tile: 5, direction: 'down'}
+        { tile: 5, direction: 'down'},
+        { tile: 3, direction: 'left'}
     ],
     6: [
+        { tile: 0, direction: 'up' },
         { tile: 3, direction: 'up' },
         { tile: 7, direction: 'right' },
         { tile: 9, direction: 'left' },
         { tile: 9, direction: 'down' },
-        { tile: 4, direction: 'up' }
+        { tile: 4, direction: 'up' },
+        { tile: 8, direction: 'right'}
     ],
     7: [
         { tile: 4, direction: 'up' },
@@ -62,14 +71,17 @@ const adjacencies = {
         { tile: 8, direction: 'right' },
         { tile: 9, direction: 'down' },
         { tile: 7, direction: 'right' },
-        { tile: 7, direction: 'left' }
+        { tile: 7, direction: 'left' },
+        { tile: 1, direction: 'up' }
     ],
     8: [
         { tile: 5, direction: 'up' },
         { tile: 7, direction: 'left' },
         { tile: 9, direction: 'right' },
         { tile: 9, direction: 'down' },
-        { tile: 4, direction: 'up' }
+        { tile: 4, direction: 'up' },
+        { tile: 6, direction: 'left'},
+        { tile: 8, direction: 'up' }
     ],
     9: [
         { tile: 0, direction: 'right' },

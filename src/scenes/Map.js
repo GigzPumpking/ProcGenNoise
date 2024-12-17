@@ -43,14 +43,18 @@ class Map extends Phaser.Scene {
             this.tiles.push(tile);
         }
     
-        /*
+        this.mTiles = [];
+        // Mountain tile code
         for (let i = 0; i < this.worldTiles[2].length; i++) {
             let tile = new Tile(this.worldTiles[2][i], i);
             tile.analyze();
-            this.tiles.push(tile);
-        }*/
-
-        this.tiles.push(new Tile(water[0], 9));
+            this.mTiles.push(tile);
+        }
+    
+        let blankTile = new Tile(blank, 9);
+        blankTile.analyze();
+        this.tiles.push(blankTile);
+        this.mTiles.push(blankTile);
     
         this.initializeCells();
 
@@ -58,6 +62,50 @@ class Map extends Phaser.Scene {
 
         this.decreaseNoise = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.COMMA);
         this.increaseNoise = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.PERIOD);
+
+        this.drawMap(this.waterLayer, this.waterMap, water[0]);
+
+        this.finalLayer = [];
+
+        for (let i = 0; i < this.height; i++) {
+            this.finalLayer.push([]);
+            for (let j = 0; j < this.width; j++) {
+                this.finalLayer[i].push(blank);
+            }
+        }
+
+        this.finalMap = this.make.tilemap({
+            data: this.finalLayer,
+            tileWidth: tileSize,
+            tileHeight: tileSize
+        });
+
+        const finalTilesheet = this.finalMap.addTilesetImage('tiles');
+
+        const flayer = this.finalMap.createLayer(0, finalTilesheet, 0, 0);
+
+        flayer.setScale(this.scaleFactor);
+
+        this.mountainLayer = [];
+
+        for (let i = 0; i < this.height; i++) {
+            this.mountainLayer.push([]);
+            for (let j = 0; j < this.width; j++) {
+                this.mountainLayer[i].push(blank);
+            }
+        }
+
+        this.mountainMap = this.make.tilemap({
+            data: this.mountainLayer,
+            tileWidth: tileSize,
+            tileHeight: tileSize
+        });
+
+        const mountainTilesheet = this.mountainMap.addTilesetImage('tiles');
+
+        const mlayer = this.mountainMap.createLayer(0, mountainTilesheet, 0, 0);
+
+        mlayer.setScale(this.scaleFactor);
 
         // Generate Text top-left corner to display noiseSampleWindow
         this.noiseSampleWindowText = this.add.text(10, 10, 'Noise Sample Window: ' + noiseSampleWindow, { fontFamily: 'Arial', fontSize: '24px', color: '#000000' });
@@ -68,25 +116,58 @@ class Map extends Phaser.Scene {
         this.player = new Player(this, 0, 0);
     }
 
-    generateMapWFC() {
-        let finalMap = [];
-
+    drawMap(layer, map, tile) {
+        layer = [];
         for (let i = 0; i < this.height; i++) {
-            finalMap.push([]);
+            layer.push([]);
             for (let j = 0; j < this.width; j++) {
-                let index = i + this.height * j;
-                let tileIndex = this.cells[index].options[this.cells[index].options.length - 1];
-                finalMap[i].push(this.tiles[tileIndex].tile);
+                layer[i].push(tile);
             }
         }
 
-        this.drawFinalMap(finalMap);
+        map = this.make.tilemap({
+            data: layer,
+            tileWidth: tileSize,
+            tileHeight: tileSize
+        });
+
+        const tilesheet = map.addTilesetImage('tiles');
+
+        const l = map.createLayer(0, tilesheet, 0, 0);
+        l.setScale(this.scaleFactor);
+    }
+
+    generateMapWFC() {
+        for (let i = 0; i < this.height; i++) {
+            for (let j = 0; j < this.width; j++) {
+                let index = i + this.height * j;
+                let tileIndex = this.cells[index].options[this.cells[index].options.length - 1];
+
+                /*if (this.tiles[tileIndex] === undefined) {
+                    console.log('Tile: ' + this.cells[index].options);
+                    continue;
+                }*/
+               
+                // if cell is collapsed, put the tile in the final map
+                if (this.cells[index].collapsed && this.cells[index].type === 'land' || this.cells[index].type === 'water') {
+                    this.finalMap.putTileAt(this.tiles[tileIndex].tile, j, i);
+                    continue;
+                }
+
+                // if cell is collapsed and type is mountain, put the tile in the mountain map
+                if (this.cells[index].collapsed && this.cells[index].type === 'mountain' || this.cells[index].type === 'water') {
+                    this.mountainMap.putTileAt(this.mTiles[tileIndex].tile, j, i);
+                    continue;
+                }
+            }
+        }
 
         let cellsCopy = this.cells.slice();
 
         cellsCopy = cellsCopy.filter(cell => !cell.collapsed);
 
         if (cellsCopy.length === 0) {
+            //console.log('Optionless: ' + this.optionless);
             return;
         }
 
@@ -95,7 +176,7 @@ class Map extends Phaser.Scene {
         let len = cellsCopy[0].options.length;
 
         let stopIndex = 0;
-        for (let i = 0; i < cellsCopy.length; i++) {
+        for (let i = 1; i < cellsCopy.length; i++) {
             if (cellsCopy[i].options.length > len) {
                 stopIndex = i;
                 break;
@@ -108,8 +189,8 @@ class Map extends Phaser.Scene {
         cell.collapsed = true;
         const pick = cell.options[Math.floor(Math.random() * cell.options.length)];
 
-        if (pick === null) {
-            console.log('No solution');
+        if (pick === undefined) {
+            this.initializeCells();
             return;
         }
 
@@ -125,8 +206,6 @@ class Map extends Phaser.Scene {
                 } else {
                     let options = new Array(this.tiles.length).fill(0).map((x, i) => i);
 
-                    let allValidOptions = [];
-
                     // Filter options based on adjacencies
 
                     if (j > 0) {
@@ -136,48 +215,72 @@ class Map extends Phaser.Scene {
                         for (let option of up.options) {
                             let valid = this.tiles[option].down;
                             validOptions = validOptions.concat(valid);
+                            validOptions = validOptions.filter((item, index) => validOptions.indexOf(item) === index);
+                        
                         }
 
-                        allValidOptions = allValidOptions.concat(validOptions);
+                        this.checkValid(options, validOptions);
                     }
                     
                     if (i < this.height - 1) {
                         let right = this.cells[i + 1 + j * this.height];
                         let validOptions = [];
+
                         for (let option of right.options) {
                             let valid = this.tiles[option].left;
+
                             validOptions = validOptions.concat(valid);
+                            validOptions = validOptions.filter((item, index) => validOptions.indexOf(item) === index);
 
                         }
-
-                        allValidOptions = allValidOptions.concat(validOptions);
+                        
+                        this.checkValid(options, validOptions);
                     }
 
                     if (j < this.width - 1) {
                         let down = this.cells[i + (j + 1) * this.height];
                         let validOptions = [];
+
                         for (let option of down.options) {
                             let valid = this.tiles[option].up;
                             validOptions = validOptions.concat(valid);
+                            validOptions = validOptions.filter((item, index) => validOptions.indexOf(item) === index);
                         }
 
-                        allValidOptions = allValidOptions.concat(validOptions);
+                        this.checkValid(options, validOptions);
                     }
 
                     if (i > 0) {
                         let left = this.cells[i - 1 + j * this.height];
                         let validOptions = [];
+
                         for (let option of left.options) {
                             let valid = this.tiles[option].right;
+
                             validOptions = validOptions.concat(valid);
+                            validOptions = validOptions.filter((item, index) => validOptions.indexOf(item) === index);
                         }
 
-                        allValidOptions = allValidOptions.concat(validOptions);
+                        this.checkValid(options, validOptions);
+                    }
+                    
+                    let newCell = new Cell(options);
+
+                    /*
+                    // Force generation to continue even if no option error occurs
+                    // if newCell has no options, make its only option blank
+                    if (newCell.options.length === 0) {
+                        newCell.options = [9];
+                        this.optionless++;
+                        this.initializeCells();
                     }
 
-                    this.checkValid(options, allValidOptions);
 
-                    let newCell = new Cell(options);
+                    // if newCell only has one option, collapse it
+                    if (newCell.options.length === 1) {
+                        newCell.collapsed = true;
+                    }
+                    */
 
                     nextCells[index] = newCell;
 
@@ -191,37 +294,53 @@ class Map extends Phaser.Scene {
     initializeCells() {
         let options = new Array(this.tiles.length).fill(0).map((x, i) => i);
 
-        // Initialize each cell in the grid with all possible tiles as options
+        let waterOptions = [9];
+        let landOptions = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+        let mountainOptions = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
+        // arr determines tile types based on noise values
+        const arr = [];
+
+        for (let i = 0; i < this.height; i++) {
+            arr.push([])
+            for (let j = 0; j < this.width; j++) {
+                let x = this.noiseValue(i, j);
+
+                let tile = this.threeSection(x, worldSyms);
+
+                arr[i].push(tile);
+            }
+        }
+
+        //Initialize each cell in the grid with all possible tiles as options
         this.cells = [];
         for (let i = 0; i < this.height; i++) {
             for (let j = 0; j < this.width; j++) {
-                let cell = new Cell(options);
-                this.cells.push(cell); // Each cell starts with all possible tile options
+                if (arr[i][j] === '~') {
+                    let cell = new Cell(waterOptions, 'water');
+                    cell.collapsed = true;
+                    this.cells.push(cell);
+                } else if (arr[i][j] === '-') {
+                    let cell = new Cell(landOptions, 'land');
+                    this.cells.push(cell);
+                } else if (arr[i][j] === '^') {
+                    let cell = new Cell(mountainOptions, 'mountain');
+                    this.cells.push(cell);
+                }
             }
         }
-
+        this.optionless = 0;
     }
 
     checkValid(arr, valid) {
-        for(let i = arr.length - 1; i >= 0; i--){
-            let element = arr[i];
-            if(!valid.includes(element)){
+        // Given an array of all valid options and an array of valid options for a specific adjacency, filters the array of all valid options to only include the valid options for the specific adjacency.
+
+        for (let i = 0; i < arr.length; i++) {
+            if (!valid.includes(arr[i])) {
                 arr.splice(i, 1);
+                i--;
             }
         }
-    }
-
-    drawFinalMap(finalMap) {
-        const map = this.make.tilemap({
-            data: finalMap,
-            tileWidth: tileSize,
-            tileHeight: tileSize
-        });
-    
-        const tilesheet = map.addTilesetImage('tiles');
-    
-        const layer = map.createLayer(0, tilesheet, 0, 0);
-        layer.setScale(this.scaleFactor);
     }
 
     generateMap() {
@@ -342,8 +461,11 @@ class Map extends Phaser.Scene {
 
     update() {
         if (Phaser.Input.Keyboard.JustDown(this.reload)) {
-            this.reseed();
+            this.initializeCells();
+            
+            /*this.reseed();
             this.generateMap();
+            */
         }
 
         if (Phaser.Input.Keyboard.JustDown(this.decreaseNoise)) {
@@ -352,14 +474,16 @@ class Map extends Phaser.Scene {
                 noiseSampleWindow -= 1;
             }
             this.noiseSampleWindowText.text = 'Noise Sample Window: ' + noiseSampleWindow;
-            this.generateMap();
+            //this.generateMap();
+            this.initializeCells();
         }
 
         if (Phaser.Input.Keyboard.JustDown(this.increaseNoise)) {
             // Increase noise sample window by 1
             noiseSampleWindow += 1;
             this.noiseSampleWindowText.text = 'Noise Sample Window: ' + noiseSampleWindow;
-            this.generateMap();
+            //this.generateMap();
+            this.initializeCells();
         }
 
         this.generateMapWFC();
